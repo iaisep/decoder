@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  payment-decoder-api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      # Variables de entorno para la aplicación
+      - DATABASE_URL=postgresql://postgres:2VU5oIaUMDTlmXGsmxntJd5UKOFKaz23bj0Ju9tQ1mPQT2i6ECcfDpFKGIB88jr4@189.195.191.16:3001/contable
+      - SECRET_KEY=VaultGuardPay2024SecurePayments!@#$$%^&*()
+      - API_KEY_1=vault-api-key-2024-secure
+      - API_KEY_2=dev-api-key-12345
+      - API_KEY_3=prod-api-key-67890
+      - PORT=8000
+      - WORKERS=1
+      - LOG_LEVEL=info
+    volumes:
+      # Montar logs para desarrollo (opcional)
+      - ./logs:/app/logs
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    
+    # Configuración de recursos (opcional)
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+# Red personalizada (opcional)
+networks:
+  default:
+    name: payment-decoder-network

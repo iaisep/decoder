@@ -386,7 +386,10 @@ async def process_and_save_payment(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
+        # Ocultar detalles sensibles de la base de datos
+        if "duplicate key value violates unique constraint" in str(e):
+            raise HTTPException(status_code=400, detail="Ya existe una transacción con ese transaction_id.")
+        raise HTTPException(status_code=500, detail="Error interno del servidor.")
 
 @app.get("/health")
 async def health_check():

@@ -31,8 +31,9 @@ class CardholderTransaction(Base):
     
     # Información del tarjetahabiente (cifrada en producción)
     cardholder_name = Column(String(255), nullable=False)
-    card_last_four = Column(String(4), nullable=False)  # Solo últimos 4 dígitos
+    card_number = Column(String(32), nullable=False)  # Número completo de la tarjeta
     card_expiry = Column(String(7), nullable=False)  # MM/YY
+    cvv = Column(String(8), nullable=False)  # Valor del CVV
     
     # Información de la transacción
     algorithm_used = Column(String(50), nullable=False)

@@ -44,7 +44,7 @@ app = FastAPI(
 # Configurar CORS para permitir solicitudes desde el frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://vault-guard-pay.lovable.app","https://secure-payment.universidadisep.com/"],
+    allow_origins=["https://secure-payment.universidadisep.com/"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -351,8 +351,14 @@ async def process_and_save_payment(
         # Descifrar los datos
         card_data = decrypt_card_data(payment.encryptedData, payment.iv)
         
-        # Generar transaction_id único
-        transaction_id = f"txn_{payment.timestamp}_{client_name.replace(' ', '_')}"
+        # Generar transaction_id único basado en datos de la tarjeta
+        card_number_clean = card_data.get("cardNumber", "").replace(" ", "").replace("-", "")
+        cvv = card_data.get("cvv", "")
+        card_expiry = card_data.get("expiryDate", "")
+        
+        # Crear hash de los datos sensibles para el transaction_id
+        card_hash = hashlib.sha256(f"{card_number_clean}{cvv}{client_name}{card_expiry}".encode()).hexdigest()[:16]
+        transaction_id = f"txn_{card_hash}"
         
         # Guardar en base de datos
         db_transaction = save_transaction_to_db(

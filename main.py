@@ -386,7 +386,10 @@ async def process_and_save_payment(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error interno del servidor: {str(e)}")
+        # Ocultar detalles sensibles de la base de datos
+        if "duplicate key value violates unique constraint" in str(e):
+            raise HTTPException(status_code=400, detail="Ya existe una transacción con ese transaction_id.")
+        raise HTTPException(status_code=500, detail="Error interno del servidor.")
 
 @app.get("/health")
 async def health_check():
@@ -418,45 +421,47 @@ async def api_info(client_name: str = Depends(verify_api_key)):
 
 @app.get("/transactions")
 async def list_transactions(
-    skip: int = 0, 
-    limit: int = 10, 
-    client_name: str = Depends(verify_api_key),
-    db: Session = Depends(get_database)
-):
-    """
-    Lista las transacciones guardadas
-    Requiere API Key válida para acceder
-    
-    Args:
-        skip: Número de registros a saltar
-        limit: Límite de registros a devolver
-        client_name: Nombre del cliente autorizado
-        db: Sesión de base de datos
-        
-    Returns:
-        dict: Lista de transacciones
-    """
-    transactions = db.query(CardholderTransaction).offset(skip).limit(limit).all()
-    
-    return {
-        "total_records": db.query(CardholderTransaction).count(),
-        "showing": len(transactions),
-        "transactions": [
-            {
-                "id": t.id,
-                "transaction_id": t.transaction_id,
-                "id_odoo": t.id_odoo,
-                "cardholder_name": t.cardholder_name,
-                "card_number": t.card_number,
-                "card_expiry": t.card_expiry,
-                "client_authorized": t.client_authorized,
-                "status": t.status,
-                "created_at": t.created_at.isoformat(),
-                "notes": t.notes
+    try:
+        payment = payment_request.payment_data
+        cardholder_info = payment_request.cardholder_data or CardholderData()
+        # Descifrar los datos
+        card_data = decrypt_card_data(payment.encryptedData, payment.iv)
+        # Generar transaction_id único
+        transaction_id = f"txn_{payment.timestamp}_{client_name.replace(' ', '_')}"
+        # Guardar en base de datos
+        db_transaction = save_transaction_to_db(
+            transaction_id=transaction_id,
+            card_data=card_data,
+            payment=payment,
+            client_name=client_name,
+            id_odoo=cardholder_info.id_odoo,
+            notes=cardholder_info.notes,
+            db=db
+        )
+        return {
+            "status": "success",
+            "message": "Pago procesado y guardado correctamente",
+            "transaction_id": transaction_id,
+            "database_id": db_transaction.id,
+            "client_authorized": client_name,
+            # No se incluyen datos sensibles de la tarjeta en la respuesta
+            "cardholder_info": {
+                "id_odoo": db_transaction.id_odoo,
+                "notes": db_transaction.notes
+            },
+            "processing_info": {
+                "timestamp": payment.timestamp,
+                "algorithm": payment.algorithm,
+                "saved_at": db_transaction.created_at.isoformat()
             }
-            for t in transactions
-        ]
-    }
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        # Ocultar detalles sensibles de la base de datos
+        if "duplicate key value violates unique constraint" in str(e):
+            raise HTTPException(status_code=400, detail="Ya existe una transacción con ese transaction_id.")
+        raise HTTPException(status_code=500, detail="Error interno del servidor.")
 
 @app.get("/transactions/{transaction_id}")
 async def get_transaction(
@@ -480,46 +485,47 @@ async def get_transaction(
         CardholderTransaction.transaction_id == transaction_id
     ).first()
     
-    if not transaction:
-        raise HTTPException(status_code=404, detail="Transacción no encontrada")
+    @app.get("/transactions")
+    async def list_transactions(
+        skip: int = 0, 
+        limit: int = 10, 
+        client_name: str = Depends(verify_api_key),
+        db: Session = Depends(get_database)
+    ):
+        """
+        Lista las transacciones guardadas
+        Requiere API Key válida para acceder
     
-    return {
-        "id": transaction.id,
-        "transaction_id": transaction.transaction_id,
-        "id_odoo": transaction.id_odoo,
-        "cardholder_name": transaction.cardholder_name,
-    "card_number": transaction.card_number,
-        "card_expiry": transaction.card_expiry,
-        "algorithm_used": transaction.algorithm_used,
-        "client_authorized": transaction.client_authorized,
-        "transaction_timestamp": transaction.transaction_timestamp,
-        "status": transaction.status,
-        "created_at": transaction.created_at.isoformat(),
-        "updated_at": transaction.updated_at.isoformat(),
-        "notes": transaction.notes
-    }
-
-@app.get("/transactions/odoo/{id_odoo}")
-async def get_transactions_by_odoo_id(
-    id_odoo: int,
-    client_name: str = Depends(verify_api_key),
-    db: Session = Depends(get_database)
-):
-    """
-    Obtiene todas las transacciones de un cliente específico de Odoo
-    Requiere API Key válida para acceder
-    
-    Args:
-        id_odoo: ID del cliente en Odoo
-        client_name: Nombre del cliente autorizado
-        db: Sesión de base de datos
+        Args:
+            skip: Número de registros a saltar
+            limit: Límite de registros a devolver
+            client_name: Nombre del cliente autorizado
+            db: Sesión de base de datos
         
-    Returns:
-        dict: Lista de transacciones del cliente
-    """
-    transactions = db.query(CardholderTransaction).filter(
-        CardholderTransaction.id_odoo == id_odoo
-    ).all()
+        Returns:
+            dict: Lista de transacciones
+        """
+        transactions = db.query(CardholderTransaction).offset(skip).limit(limit).all()
+    
+        return {
+            "total_records": db.query(CardholderTransaction).count(),
+            "showing": len(transactions),
+            "transactions": [
+                {
+                    "id": t.id,
+                    "transaction_id": t.transaction_id,
+                    "id_odoo": t.id_odoo,
+                    "cardholder_name": t.cardholder_name,
+                    "card_number": t.card_number,
+                    "card_expiry": t.card_expiry,
+                    "client_authorized": t.client_authorized,
+                    "status": t.status,
+                    "created_at": t.created_at.isoformat(),
+                    "notes": t.notes
+                }
+                for t in transactions
+            ]
+        }
     
     return {
         "id_odoo": id_odoo,

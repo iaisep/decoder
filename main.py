@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -37,6 +38,16 @@ app = FastAPI(
     title="Secure Payment Decoder API",
     description="API para descifrar datos de tarjetas de crédito de forma segura con almacenamiento en base de datos",
     version="1.0.0"
+)
+
+
+# Configurar CORS para permitir solicitudes desde el frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://vault-guard-pay.lovable.app"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Crear tablas al iniciar la aplicación

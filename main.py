@@ -367,12 +367,7 @@ async def process_and_save_payment(
             "transaction_id": transaction_id,
             "database_id": db_transaction.id,
             "client_authorized": client_name,
-            "card_data": {
-                "cardNumber": card_data.get("cardNumber", ""),
-                "expiryDate": card_data.get("expiryDate", ""),
-                "cardHolder": card_data.get("cardHolder", ""),
-                "cvv": card_data.get("cvv", "")
-            },
+            # No se incluyen datos sensibles de la tarjeta en la respuesta
             "cardholder_info": {
                 "id_odoo": db_transaction.id_odoo,
                 "notes": db_transaction.notes

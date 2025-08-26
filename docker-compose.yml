@@ -4,7 +4,7 @@ services:
   payment-decoder-api:
     build: .
     ports:
-      - "8000:8000"
+      - "8002:8002"
     environment:
       # Variables de entorno para la aplicación
       - DATABASE_URL=postgresql://postgres:2VU5oIaUMDTlmXGsmxntJd5UKOFKaz23bj0Ju9tQ1mPQT2i6ECcfDpFKGIB88jr4@189.195.191.16:3001/contable
@@ -12,7 +12,7 @@ services:
       - API_KEY_1=vault-api-key-2024-secure
       - API_KEY_2=dev-api-key-12345
       - API_KEY_3=prod-api-key-67890
-      - PORT=8000
+  - PORT=8002
       - WORKERS=1
       - LOG_LEVEL=info
     volumes:

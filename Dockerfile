@@ -10,7 +10,7 @@ LABEL version="1.0.0"
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH="/app" \
-    PORT=8000
+    PORT=8002
 
 # Instalar dependencias del sistema necesarias para PostgreSQL
 RUN apt-get update && apt-get install -y \
